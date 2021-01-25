@@ -112,22 +112,26 @@ hilmo_agg1$ICD <- substr(hilmo_agg1$pdgo, 1, 1)
 ## 20 year of timeline of pdgo
 ## TODO add column (list) including id's which are then used in shiny app to filter right population
 ## TODO also add to shiny app percentage calculation correcting "the new pop"
+## NOTE: i is end of the time interval. Ex. i=1 means that events that has happened between 0.01 - 1
+## Note: calculation is approx. because real years are not counted. Year is 365 days in calcalations.
 # pop_n <- length(unique(population$id))
 hilmo_tl <- NULL
-for(i in seq(from = -20, to = 20, by = 1)){
+for(i in seq(from = -20, to = 20, by = 1))for(i in seq(from = -20, to = 20, by = 1)){
   if(is.null(hilmo_tl)){
     hilmo_agg1 %>% 
-      # filter( (laht_yr > i-1 & laht_yr <= i) | (tulo_yr < i & tulo_yr > i-1) ) %>% 
-      filter( ( tulo_yr <= i + 0.5 & laht_yr > i - 0.5) ) %>% 
+      filter( ( tulo_yr <= i & laht_yr > i - 1) ) %>% 
       group_by(ICD) %>% 
       summarise(
         time = i,
         patients = length(unique(id)) ,
         ## TODO calculate manually on compare if its correct formula
-        hospital_days = sum(case_when(tulo_yr > (i - 0.5) & laht_yr <= (i + 0.5) ~ as.double(days),
-                                      tulo_yr < (i - 0.5) & laht_yr >= (i + 0.5) ~ 365,
-                                      tulo_yr < (i - 0.5) & laht_yr < (i + 0.5) & laht_yr > (i - 0.5) ~ abs((i - 0.5) * 365 - abs(lahto_scaled)),
-                                      tulo_yr > (i - 0.5) & tulo_yr < (i + 0.5) & laht_yr > (i + 0.5) ~ abs(abs(tulo_scaled) - (i + 0.5) * 365) 
+        hospital_days = sum(case_when(tulo_yr > (i - 1) & laht_yr <= (i) ~ as.double(days),
+                                      tulo_yr < (i - 1) & laht_yr >= (i) ~ 365,
+                                      tulo_yr < (i - 1) & laht_yr < (i) & laht_yr > (i - 0.5) ~ abs(abs((i - 1) * 365) - abs(lahto_scaled)),
+                                      tulo_yr > (i - 1) & tulo_yr < (i) & laht_yr > (i + 0.5) ~ ifelse(i<0, 
+                                                                                                       abs(tulo_scaled) - (abs(i * 365)),
+                                                                                                       abs(abs(i * 365) - abs(tulo_scaled))
+                                      )  
                                       
         ), na.rm = T)
         
@@ -136,16 +140,20 @@ for(i in seq(from = -20, to = 20, by = 1)){
     hilmo_tl <- hilmo_tl %>% 
       rbind(
         hilmo_agg1 %>% 
-          filter( (laht_yr > i-1 & laht_yr <= i) | (tulo_yr < i & tulo_yr > i-1) ) %>% 
+          filter( ( tulo_yr <= i & laht_yr > i - 1) ) %>% 
+          #filter( (laht_yr > i - 1 & laht_yr <= i) | (tulo_yr < i & tulo_yr > i - 1) ) %>% 
           group_by(ICD) %>% 
           summarise(
             time = i,
             patients = length(unique(id)) ,
             ## TODO calculate manually on compare if its correct formula
-            hospital_days = sum(case_when(tulo_yr > (i - 0.5) & laht_yr <= (i + 0.5) ~ as.double(days),
-                                          tulo_yr < (i - 0.5) & laht_yr >= (i + 0.5) ~ 365,
-                                          tulo_yr < (i - 0.5) & laht_yr < (i + 0.5) & laht_yr > (i - 0.5) ~ abs((i - 0.5) * 365 - abs(lahto_scaled)),
-                                          tulo_yr > (i - 0.5) & tulo_yr < (i + 0.5) & laht_yr > (i + 0.5) ~ abs(abs(tulo_scaled) - (i + 0.5) * 365) 
+            hospital_days = sum(case_when(tulo_yr > (i - 1) & laht_yr <= (i) ~ as.double(days),
+                                          tulo_yr < (i - 1) & laht_yr >= (i) ~ 365,
+                                          tulo_yr < (i - 1) & laht_yr < (i) & laht_yr > (i - 0.5) ~ abs(abs((i - 1) * 365) - abs(lahto_scaled)),
+                                          tulo_yr > (i - 1) & tulo_yr < (i) & laht_yr > (i + 0.5) ~ ifelse(i<0, 
+                                                                                                           abs(tulo_scaled) - (abs(i * 365)),
+                                                                                                           abs(abs(i * 365) - abs(tulo_scaled))
+                                          )  
                                           
             ), na.rm = T)
             
