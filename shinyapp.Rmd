@@ -184,11 +184,11 @@ Inputs {.sidebar}
 
 ```{r}
 h3("Settings")
-radioButtons(inputId = "hilmox", label = "X-var:", choices = c("persons", "cases", "hospitalized"), selected = "hospitalized")
-radioButtons(inputId = "hilmoy", label = "Y-var:", choices = c("persons", "cases", "hospitalized"), selected = "persons")
+radioButtons(inputId = "hilmox", label = "X-var:", choices = c("persons", "cases", "hospital_days"), selected = "persons")
+radioButtons(inputId = "hilmoy", label = "Y-var:", choices = c("persons", "cases", "hospital_days"), selected = "hospital_days")
 
 
-data_hilmo_general <- eventReactive(input$popselect, {
+data_hilmo_general <- reactive({
   
   s <- unique(event_data("plotly_click", source = "timeline_graph")$x)
   
@@ -199,15 +199,16 @@ data_hilmo_general <- eventReactive(input$popselect, {
       group_by(pdgo) %>% 
       summarise(persons = length(unique(id)),
                 cases = n(),
-                hospitalized = sum(days))
+                hospital_days = sum(days))
   }else{
     hilmo_agg1 %>% 
       filter(id %in% data_pop()$id) %>% 
-      filter( (laht_yr > s-1 & laht_yr <= s)| (tulo_yr < s & tulo_yr > s-1) ) %>% 
+      # filter( (laht_yr > s-1 & laht_yr <= s)| (tulo_yr < s & tulo_yr > s-1) ) %>% 
+      filter(( tulo_yr <= s & laht_yr > s - 1)) %>% 
       group_by(pdgo) %>% 
       summarise(persons = length(unique(id)),
                 cases = n(),
-                hospitalized = sum(days))
+                hospital_days = sum(days))
   }
   
 
@@ -233,10 +234,10 @@ Row
 renderPlotly({ 
   if(input$hilmox == "persons") xlab <- "persons"
   if(input$hilmox == "cases") xlab <- "cases"
-  if(input$hilmox == "hospitalized") xlab <- "hospitalized"
+  if(input$hilmox == "hospital_days") xlab <- "hospital_days"
   if(input$hilmoy == "persons") ylab <- "persons"
   if(input$hilmoy == "cases") ylab <- "cases"
-  if(input$hilmoy == "hospitalized") ylab <- "hospitalized"
+  if(input$hilmoy == "hospital_days") ylab <- "hospital_days"
   
   s <- unique(event_data("plotly_click", source = "timeline_graph")$x)
 
@@ -276,7 +277,7 @@ Row {.tabset}
 ```{r plotly_timeline}
 renderPlotly({
   p <- ggplot(data = data_hilmo_timeline()) +
-    geom_bar(aes(x = time, y = hospital_days, group = ICD, fill = ICD), stat= "identity")
+    geom_bar(aes(x = time, y = get(input$hilmoy), group = ICD, fill = ICD), stat= "identity")
   p
   ggplotly(p, source="timeline_graph")
 })
