@@ -108,13 +108,11 @@ hilmo %>%
 hilmo_agg1 <- hilmo_agg1[!duplicated(hilmo_agg1), ]
 hilmo_agg1$ICD <- substr(hilmo_agg1$pdgo, 1, 1)
 
-## Hilmo timeline dataset ----
-## 20 year of timeline of pdgo
+## Hilmo timeline dataset: 20 year of timeline of pdgo ----
 ## TODO add column (list) including id's which are then used in shiny app to filter right population
 ## TODO also add to shiny app percentage calculation correcting "the new pop"
 ## NOTE: i is end of the time interval. Ex. i=1 means that events that has happened between 0.01 - 1
-## Note: calculation is approx. because real years are not counted. Year is 365 days in calcalations.
-# pop_n <- length(unique(population$id))
+## NOTE: calculation is approx because real years are not counted. Year is defined as 365 days.
 hilmo_tl <- NULL
 for(i in seq(from = -20, to = 20, by = 1))for(i in seq(from = -20, to = 20, by = 1)){
   if(is.null(hilmo_tl)){
@@ -124,11 +122,11 @@ for(i in seq(from = -20, to = 20, by = 1))for(i in seq(from = -20, to = 20, by =
       summarise(
         time = i,
         patients = length(unique(id)) ,
-        ## TODO calculate manually on compare if its correct formula
+        ## Formula 1.1: This formula is explained in documentation
         hospital_days = sum(case_when(tulo_yr > (i - 1) & laht_yr <= (i) ~ as.double(days),
                                       tulo_yr < (i - 1) & laht_yr >= (i) ~ 365,
-                                      tulo_yr < (i - 1) & laht_yr < (i) & laht_yr > (i - 0.5) ~ abs(abs((i - 1) * 365) - abs(lahto_scaled)),
-                                      tulo_yr > (i - 1) & tulo_yr < (i) & laht_yr > (i + 0.5) ~ ifelse(i<0, 
+                                      tulo_yr < (i - 1) & laht_yr < (i) & laht_yr > (i - 1) ~ abs(abs((i - 1) * 365) - abs(lahto_scaled)),
+                                      tulo_yr > (i - 1) & tulo_yr < (i) & laht_yr > (i + 1) ~ ifelse(i<0, 
                                                                                                        abs(tulo_scaled) - (abs(i * 365)),
                                                                                                        abs(abs(i * 365) - abs(tulo_scaled))
                                       )  
@@ -141,16 +139,15 @@ for(i in seq(from = -20, to = 20, by = 1))for(i in seq(from = -20, to = 20, by =
       rbind(
         hilmo_agg1 %>% 
           filter( ( tulo_yr <= i & laht_yr > i - 1) ) %>% 
-          #filter( (laht_yr > i - 1 & laht_yr <= i) | (tulo_yr < i & tulo_yr > i - 1) ) %>% 
           group_by(ICD) %>% 
           summarise(
             time = i,
             patients = length(unique(id)) ,
-            ## TODO calculate manually on compare if its correct formula
+            ## Formula 1.1: This formula is explained in documentation
             hospital_days = sum(case_when(tulo_yr > (i - 1) & laht_yr <= (i) ~ as.double(days),
                                           tulo_yr < (i - 1) & laht_yr >= (i) ~ 365,
-                                          tulo_yr < (i - 1) & laht_yr < (i) & laht_yr > (i - 0.5) ~ abs(abs((i - 1) * 365) - abs(lahto_scaled)),
-                                          tulo_yr > (i - 1) & tulo_yr < (i) & laht_yr > (i + 0.5) ~ ifelse(i<0, 
+                                          tulo_yr < (i - 1) & laht_yr < (i) & laht_yr > (i - 1) ~ abs(abs((i - 1) * 365) - abs(lahto_scaled)),
+                                          tulo_yr > (i - 1) & tulo_yr < (i) & laht_yr > (i + 1) ~ ifelse(i<0, 
                                                                                                            abs(tulo_scaled) - (abs(i * 365)),
                                                                                                            abs(abs(i * 365) - abs(tulo_scaled))
                                           )  
@@ -161,21 +158,14 @@ for(i in seq(from = -20, to = 20, by = 1))for(i in seq(from = -20, to = 20, by =
       )
   }
 }
-# hilmo_tl$ICDMAIN <- substr(hilmo_tl$pdgo, 1, 1)
-# hospital_days = ifelse( (tulo_yr >= i & laht_yr <= i + 1),
-#                         sum(days),
-#                         ifelse(tulo_yr < i,
-#                                (lahto_scaled - i * 365),
-#                                ((i + 1) * 365 - tulo_scaled )) )
 
 
-## Tarkastetaan
-ggplot(data = hilmo_tl) +
-  geom_bar(aes(x = time, y = patients, group = ICD, fill = ICD), stat= "identity")
-ggplot(data = hilmo_tl) +
-  geom_bar(aes(x = time, y = hospital_days, group = ICD, fill = ICD), stat= "identity")
+## Check plots
+# ggplot(data = hilmo_tl) +
+#   geom_bar(aes(x = time, y = patients, group = ICD, fill = ICD), stat= "identity")
+# ggplot(data = hilmo_tl) +
+#   geom_bar(aes(x = time, y = hospital_days, group = ICD, fill = ICD), stat= "identity")
 
-# yrs <- seq(-3650, 3650, by = 365)
 
 ## Gather diagnose variable to one MAIN / SIDE
 
