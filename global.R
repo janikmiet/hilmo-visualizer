@@ -5,6 +5,7 @@ library(haven)
 library(dplyr)
 ## For shinyapp
 library(flexdashboard)
+library(hrbrthemes)
 library(tidyverse)
 library(Hmisc)
 library(lubridate) 
