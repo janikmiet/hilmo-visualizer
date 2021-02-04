@@ -1,5 +1,5 @@
 ---
-title: "Patient Data Visualiser"
+title: "Hilmo Data Visualiser"
 output: 
   flexdashboard::flex_dashboard:
     orientation: rows
@@ -17,7 +17,6 @@ Patients
 
 Inputs {.sidebar}
 --------------------------------------------------------
-
 
 ```{r sidebar}
 
@@ -45,35 +44,46 @@ h3("Settings")
 radioButtons(inputId = "censory", label = "Censoring Y-var:", choices = c("persons", "percentage"), selected = "persons")
 
 
-data_pop <-eventReactive(input$popselect,{
-  d1 <- population %>% 
-    filter(between(diagnosed_age_yrs, input$ageslider[1], input$ageslider[2])) # filter by age
+data_pop <- reactive({
+  d1 <- population
+  
+  input$popselect
+  # filter by age
+  isolate(
+  d1 <- d1 %>% 
+    filter(between(diagnosed_age_yrs, input$ageslider[1], input$ageslider[2]))  # filter by age
+  )
   # filter by gender
-  if(input$gender != "All"){
-    d1 <- d1 %>%
-      filter(gender == input$gender)
-  }
+  isolate(
+    if(input$gender != "All"){
+      d1 <- d1 %>%
+        filter(gender == input$gender)
+    }
+  )
+  
   # if n > 9 ok, else whole population
   if(nrow(d1) > 9) {
     return(d1)
   }else{
     return(population)
   }
-  
 })
 
-data_censored_info <- eventReactive(input$popselect, {
-  data_pop() %>% 
-    group_by(survived, censored) %>% 
-    summarise(persons = n()) %>% 
-    group_by(censored) %>% 
-    mutate(persons = cumsum(persons),
-           percentage = 100 * persons / nrow(population),
-           censored = factor(censored, levels = c(0,1), labels = c("Died", "Censored")) ) %>% 
-    select(survived, censored, persons, percentage) -> data_pop_censored
+data_censored_info <- reactive({
+  input$popselect
+  isolate(
+    data_pop() %>% 
+      group_by(survived, censored) %>% 
+      summarise(persons = n()) %>% 
+      group_by(censored) %>% 
+      mutate(persons = cumsum(persons),
+             percentage = 100 * persons / nrow(population),
+             censored = factor(censored, levels = c(0,1), labels = c("Died", "Censored")) ) %>% 
+      select(survived, censored, persons, percentage) -> data_pop_censored
+  )
 })
 
-gender_color <- eventReactive(input$popselect, {
+gender_color <- reactive({
         ## Color codes for bars
         bar_colors <- c("dodgerblue3", "orchid2")
         if(input$gender == "Female") bar_colors <- c("orchid2")
@@ -90,12 +100,15 @@ Row {.tabset}
 ### Population
 
 ```{r populationGraphPlotly}
+
+data_population_graph <- reactive({
+  data_pop() %>% 
+    group_by(diagnosed_age_yrs, gender) %>% 
+    summarise(n=n())
+})
+
 renderPlotly({ 
-      d1 <- data_pop() %>% 
-        group_by(diagnosed_age_yrs, gender) %>% 
-        summarise(n=n())
-      
-      p <- ggplot(d1) +
+      p <- ggplot(data_population_graph()) +
         geom_bar(aes(x=diagnosed_age_yrs, y=n, fill=gender), stat="identity") +
         labs(title = paste0("Population (n=", nrow(data_pop()),")" ), 
              caption = "", x="", y="") + 
@@ -183,138 +196,131 @@ Inputs {.sidebar}
 --------------------------------------------------------
 
 ```{r}
+shiny::radioButtons(inputId = "hilmox", label = "X-axis:", choices = c("persons", "cases", "hospital_days"), selected = "persons")
+shiny::radioButtons(inputId = "hilmoy", label = "Y-axis:", choices = c("persons", "cases", "hospital_days"), selected = "hospital_days")
+
 h3("Settings")
-radioButtons(inputId = "hilmox", label = "X-var:", choices = c("persons", "cases", "hospital_days"), selected = "persons")
-radioButtons(inputId = "hilmoy", label = "Y-var:", choices = c("persons", "cases", "hospital_days"), selected = "hospital_days")
+shiny::selectInput(inputId = "hilmo_icd", label = "ICD categories:", choices = icd_categories, selected = icd_categories, multiple = TRUE)
+shiny::sliderInput(inputId = "hilmo_timeline", label = "Main/side diagnoses time period:", min = -20, max = 20, value = c(-20, 20), ticks = T)
+
+actionButton(inputId = "hilmo_refresh", label = "Plot!")
+
 
 
 data_hilmo_maindiag <- reactive({
-  
+  ## Selected year from timeline
   s <- unique(event_data("plotly_click", source = "timeline_graph")$x)
-  
-  ## TODO precalculate this and then filter by id list? cannot bc persons-var wouldnt be accured
+  ## TODO precalculate this and then filter by id list? cannot bc persons nor days  var wouldn't be accured
   if(is.null(s)){
-    hilmo_agg1 %>% 
+    hilmo_maindiags %>% 
       filter(id %in% data_pop()$id) %>% 
-      group_by(pdgo) %>% 
+      filter(substr(main, 1, 1) %in% input$hilmo_icd) %>% 
+      group_by(main) %>% 
       summarise(persons = length(unique(id)),
                 cases = n(),
                 hospital_days = sum(days))
   }else{
-    hilmo_agg1 %>% 
+    hilmo_maindiags %>% 
       filter(id %in% data_pop()$id) %>% 
+      filter(substr(main, 1, 1) %in% input$hilmo_icd) %>% 
       filter(( tulo_yr <= s & laht_yr > s - 1)) %>% 
-      group_by(pdgo) %>% 
+      group_by(main) %>% 
       summarise(persons = length(unique(id)),
                 cases = n(),
                 hospital_days = sum(days))
   }
-  
-
 })
 
 data_hilmo_sidediag <- reactive({
-  
+  ## Selected year from timeline
   s <- unique(event_data("plotly_click", source = "timeline_graph")$x)
-  
   ## TODO precalculate this and then filter by id list? cannot bc persons-var wouldnt be accured
   if(is.null(s)){
-    hilmo_agg1 %>% 
+    hilmo_sidediags %>% 
       filter(id %in% data_pop()$id) %>% 
-      group_by(sdg1o) %>% 
+      filter(substr(side, 1, 1) %in% input$hilmo_icd) %>% 
+      group_by(side) %>% 
       summarise(persons = length(unique(id)),
                 cases = n(),
                 hospital_days = sum(days))
   }else{
-    hilmo_agg1 %>% 
+    hilmo_sidediags %>% 
       filter(id %in% data_pop()$id) %>% 
+      filter(substr(side, 1, 1) %in% input$hilmo_icd) %>% 
       filter(( tulo_yr <= s & laht_yr > s - 1)) %>% 
-      group_by(sdg1o) %>% 
+      group_by(side) %>% 
       summarise(persons = length(unique(id)),
                 cases = n(),
                 hospital_days = sum(days))
   }
-  
-
 })
 
-data_hilmo_timeline <- eventReactive(input$popselect, {
-  # TODO
-  hilmo_tl #%>% 
-          # mutate(
-          #   patients_percentage = round(100 * patients / nrow(data_pop()), 2)
-          # )
+data_hilmo_timeline <- reactive({
+  ### Calculate timeline dataset without diagnose column ----
+  ## This needs to be inside shiny reactive bc of population id's
+  hilmo_timeline <- NULL
+  n <- seq(-20,20,1)
+  input$hilmo_refresh
+  isolate(
+    withProgress(message = 'Calculating timeline', value = 0, {
+      for(i in n){
+        if(is.null(hilmo_timeline)){
+          hilmo_diags %>% 
+            filter(id %in% data_pop()$id) %>% 
+            filter(substr(pdgo, 1, 1) %in% input$hilmo_icd | substr(pdge, 1, 1) %in% input$hilmo_icd) %>% 
+            filter( ( tulo_yr <= i & laht_yr > i - 1) ) %>% 
+            # group_by(ICD) %>% 
+            summarise(
+              time = i,
+              patients = length(unique(id)) ,
+              cases = n(),
+              ## Formula 1.1: This formula is explained in documentation
+              hospital_days = sum(case_when(tulo_yr > (i - 1) & laht_yr <= (i) ~ as.double(days),
+                                            tulo_yr < (i - 1) & laht_yr >= (i) ~ 365,
+                                            tulo_yr < (i - 1) & laht_yr < (i) & laht_yr > (i - 1) ~ abs(abs((i - 1) * 365) - abs(lahto_scaled)),
+                                            tulo_yr > (i - 1) & tulo_yr < (i) & laht_yr > (i + 1) ~ ifelse(i<0, 
+                                                                                                           abs(tulo_scaled) - (abs(i * 365)),
+                                                                                                           abs(abs(i * 365) - abs(tulo_scaled))
+                                            )  
+                                            
+              ), na.rm = T)
+              
+            )   -> hilmo_timeline
+        }else{
+          hilmo_timeline <- hilmo_timeline %>% 
+            rbind(
+              hilmo_diags %>% 
+                filter(id %in% data_pop()$id) %>% 
+                filter(substr(pdgo, 1, 1) %in% input$hilmo_icd | substr(pdge, 1, 1) %in% input$hilmo_icd) %>% 
+                filter( ( tulo_yr <= i & laht_yr > i - 1) ) %>% 
+                # group_by(ICD) %>% 
+                summarise(
+                  time = i,
+                  patients = length(unique(id)) ,
+                  cases = n(),
+                  ## Formula 1.1: This formula is explained in documentation
+                  hospital_days = sum(case_when(tulo_yr > (i - 1) & laht_yr <= (i) ~ as.double(days),
+                                                tulo_yr < (i - 1) & laht_yr >= (i) ~ 365,
+                                                tulo_yr < (i - 1) & laht_yr < (i) & laht_yr > (i - 1) ~ abs(abs((i - 1) * 365) - abs(lahto_scaled)),
+                                                tulo_yr > (i - 1) & tulo_yr < (i) & laht_yr > (i + 1) ~ ifelse(i<0, 
+                                                                                                               abs(tulo_scaled) - (abs(i * 365)),
+                                                                                                               abs(abs(i * 365) - abs(tulo_scaled))
+                                                )  
+                                                
+                  ), na.rm = T)
+                  
+                ) 
+            )
+        }
+        # Increment the progress bar, and update the detail text.
+        incProgress(1/length(n), detail = paste(" year ", i))
+      }
+    })
+  )
+  return(hilmo_timeline)
 })
 
 ```
-
-
-Row
------------------------------------------------------------------------
-
-### Main diagnoses
-
-```{r}
-renderPlotly({ 
-  if(input$hilmox == "persons") xlab <- "persons"
-  if(input$hilmox == "cases") xlab <- "cases"
-  if(input$hilmox == "hospital_days") xlab <- "hospital_days"
-  if(input$hilmoy == "persons") ylab <- "persons"
-  if(input$hilmoy == "cases") ylab <- "cases"
-  if(input$hilmoy == "hospital_days") ylab <- "hospital_days"
-  
-  s <- unique(event_data("plotly_click", source = "timeline_graph")$x)
-
-  ## Plot differs by selected years
-  if(is.null(s)){
-    title <- paste0("Main diagnoses in whole timeline")
-    ggplot(data = data_hilmo_maindiag(), aes(x = get(input$hilmox), y = get(input$hilmoy))) +
-      geom_text(aes(label = pdgo)) +
-      labs(x = xlab, y = ylab, title=title)
-  }else{
-      title <- paste0("Main diagnoses in ", s)
-    ggplot(data = data_hilmo_maindiag(), aes(x = get(input$hilmox), y = get(input$hilmoy))) +
-      geom_text(aes(label = pdgo)) +
-      labs(x = xlab, y = ylab, title=title)
-  }
-  
-
-})
-```
-
-
-### Side diagnoses
-
-```{r}
-renderPlotly({ 
-  if(input$hilmox == "persons") xlab <- "persons"
-  if(input$hilmox == "cases") xlab <- "cases"
-  if(input$hilmox == "hospital_days") xlab <- "hospital_days"
-  if(input$hilmoy == "persons") ylab <- "persons"
-  if(input$hilmoy == "cases") ylab <- "cases"
-  if(input$hilmoy == "hospital_days") ylab <- "hospital_days"
-  
-  s <- unique(event_data("plotly_click", source = "timeline_graph")$x)
-
-  ## Plot differs by selected years
-  if(is.null(s)){
-    title <- paste0("Side diagnoses in whole timeline")
-    ggplot(data = data_hilmo_sidediag(), aes(x = get(input$hilmox), y = get(input$hilmoy))) +
-      geom_text(aes(label = sdg1o)) +
-      labs(x = xlab, y = ylab, title=title)
-  }else{
-      title <- paste0("Side diagnoses in ", s)
-    ggplot(data = data_hilmo_sidediag(), aes(x = get(input$hilmox), y = get(input$hilmoy))) +
-      geom_text(aes(label = sdg1o)) +
-      labs(x = xlab, y = ylab, title=title)
-  }
-  
-
-})
-```
-
-
-
 
 
 Row {.tabset}
@@ -329,14 +335,19 @@ renderPlotly({
   if(input$hilmoy == "hospital_days") ylab <- "hospital_days"
   
   p <- ggplot(data = data_hilmo_timeline()) +
-    geom_bar(aes(x = time, y = get(input$hilmoy), group = ICD, fill = ICD), stat= "identity") +
+    geom_bar(aes(x = time, y = get(input$hilmoy)), stat= "identity") +
     scale_x_continuous(breaks = seq(-20, 20, 5)) +
     labs(y=ylab) +
     hrbrthemes::theme_ipsum()
   
+  # input$hilmo_refresh
+  # isolate(
   ggplotly(p, source="timeline_graph")
+  # )
 })
 ```
+
+
 
 
 ### Console
@@ -346,3 +357,74 @@ renderPrint({
   unique(event_data("plotly_click", source = "timeline_graph")$x)
 })
 ```
+
+
+Row
+-----------------------------------------------------------------------
+
+### Main diagnoses
+
+```{r}
+renderPlotly({ 
+  s <- unique(event_data("plotly_click", source = "timeline_graph")$x) ## If year is selected, use as filter
+  if(input$hilmox == "persons") xlab <- "persons"
+  if(input$hilmox == "cases") xlab <- "cases"
+  if(input$hilmox == "hospital_days") xlab <- "hospital_days"
+  if(input$hilmoy == "persons") ylab <- "persons"
+  if(input$hilmoy == "cases") ylab <- "cases"
+  if(input$hilmoy == "hospital_days") ylab <- "hospital_days"
+  
+  input$hilmo_refresh
+  isolate(
+    ## Plot differs by selected years
+    if(is.null(s)){
+      title <- paste0("")
+      ggplot(data = data_hilmo_maindiag(), aes(x = get(input$hilmox), y = get(input$hilmoy))) +
+        geom_text(aes(label = main)) +
+        labs(x = xlab, y = ylab, title=title)
+    }else{
+        title <- paste0("Main diagnoses in year ", s)
+      ggplot(data = data_hilmo_maindiag(), aes(x = get(input$hilmox), y = get(input$hilmoy))) +
+        geom_text(aes(label = main)) +
+        labs(x = xlab, y = ylab, title=title)
+    }
+  )
+})
+```
+
+
+### Side diagnoses
+
+```{r}
+renderPlotly({ 
+  if(input$hilmox == "persons") xlab <- "persons"
+  if(input$hilmox == "cases") xlab <- "cases"
+  if(input$hilmox == "hospital_days") xlab <- "hospital_days"
+  if(input$hilmoy == "persons") ylab <- "persons"
+  if(input$hilmoy == "cases") ylab <- "cases"
+  if(input$hilmoy == "hospital_days") ylab <- "hospital_days"
+  ## If year is selected, use as filter
+  s <- unique(event_data("plotly_click", source = "timeline_graph")$x)
+  
+  input$hilmo_refresh
+  isolate(
+    ## Plot differs by selected years
+    if(is.null(s)){
+      title <- paste0("")
+      ggplot(data = data_hilmo_sidediag(), aes(x = get(input$hilmox), y = get(input$hilmoy))) +
+        geom_text(aes(label = side)) +
+        labs(x = xlab, y = ylab, title=title)
+    }else{
+      title <- paste0("Side diagnoses in year ", s)
+      ggplot(data = data_hilmo_sidediag(), aes(x = get(input$hilmox), y = get(input$hilmoy))) +
+        geom_text(aes(label = side)) +
+        labs(x = xlab, y = ylab, title=title)
+    }
+  )
+})
+```
+
+
+
+
+
