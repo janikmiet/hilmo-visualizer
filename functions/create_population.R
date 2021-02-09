@@ -45,6 +45,6 @@ create_population <- function(data,
   popdata[popdata$survived < 0, "survived"] <- 0 # SAME AS DIED
   
   # Return / Save to global env
-  return(popdata)
+  population <- popdata
 }
 
