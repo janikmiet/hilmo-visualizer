@@ -19,7 +19,8 @@ Information what you get from this application:
 
 ## Screenshots
 
-
+![](doc/hilmoviz1.png)
+![](doc/hilmoviz2.png)
 
 ## How to use this program?
 
