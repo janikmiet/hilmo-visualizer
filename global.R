@@ -13,7 +13,7 @@ library(plotly)
 library(survival) # maybe not needed
 library(survminer) # maybe not needed
 library(shiny)
-library(shinydashboard)
+# library(shinydashboard)
 
 ## EDIT THIS PATH! Set a location of prepared dataset imagefile
 load(file="", verbose=T)
