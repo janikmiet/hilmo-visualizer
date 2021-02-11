@@ -10,11 +10,11 @@ library(dplyr)
 ## Define input datasets -----------------------
 
 ## !PREPARE: Input data folder location (can be also netword drive)
-input_data_location <- "\\\\uefad.uef.fi\\DATA\\LOCALSITES\\SITES\\MEDALZ_analyysitila_374\\" ### SET DATA FOLDER LOCATION!
+input_data_location <- "" ### SET DATA FOLDER LOCATION!
 # list.files(input_data_location)
 
 ## !PREPARE: Population input data
-input_population <- read_sas(paste0(input_data_location, "\\COMMON_shared_data\\MEDALZcohort\\kela_alzh_tapver_correct7.sas7bdat")) ## SET INPUT DATA NAME!
+input_population <- read_sas(paste0(input_data_location, "")) ## SET INPUT DATA NAME!
 input_population$SP <- factor(input_population$SP, labels=c("Male", "Female"))
 
 
@@ -32,7 +32,7 @@ population <- create_population(data = input_population,
 
 ## !PREPARE: SET THESE DATASET NAME AND VARIABLE NAMES!!!
 ## For Hilmo dataset
-hilmo <- read_sas(paste0(input_data_location, "COMMON_shared_data\\Hilmo\\hilmo9415purettu.sas7bdat"))
+hilmo <- read_sas(paste0(input_data_location, ""))
 
 ## !PREPARE: CHECK IF YOU NEED TO DO THIS WRANGLING!!
 ## Dates, check if you need to do date wrangling!!
