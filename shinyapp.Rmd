@@ -84,11 +84,14 @@ data_censored_info <- reactive({
 })
 
 gender_color <- reactive({
+  input$popselect
         ## Color codes for bars
         bar_colors <- c("dodgerblue3", "orchid2")
-        if(input$gender == "Female") bar_colors <- c("orchid2")
-        if(input$gender == "Male") bar_colors <- c("dodgerblue3")
+  isolate(if(input$gender == "Female") bar_colors <- c("orchid2"))
+  isolate(if(input$gender == "Male") bar_colors <- c("dodgerblue3"))
+  isolate(
         return(bar_colors)
+  )
 })
 ```
 
