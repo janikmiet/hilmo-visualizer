@@ -65,8 +65,28 @@ date_entered    # Date variable when patient entered to hospital
 date_left       # Date variable when patient left from hospital
 ```
 
-## Notes
 
-This application can be a bit slow with large datasets. Be patient, thank you!
+## Acknowledgements
+
+We are grateful for all comments from clinical advisors from KUH and UEF. Also we are grateful for funders and [Neurocenter Finland](https://neurocenterfinland.fi/) which made this project possible to develop. 
+
+<p align="center">
+  <img src="./img/neurocenter_small.jpg" height="90" title="hover text">
+  <img src="./img/image002.png" height="90" title="hover text">
+  <img src="./img/image003.png" height="90" title="hover text">
+  <img src="./img/image004.png" height="90" title="hover text">
+</p>
 
 
+About
+===================
+
+Found a bug? If you know github, you can open an [issue](https://github.com/janikmiet/hilmo-visualizer/issues). Otherwise contact the [creators](mailto:jani.miettinen@uef.fi?subject=I found a bug in Hilmo visualizer).
+</br>
+</br>
+**Source code:** <https://github.com/janikmiet/hilmo-visualizer>
+</br>
+**Licence:** [CC BY](https://creativecommons.org/licenses/by/4.0/). This license allows reusers to distribute, remix, adapt, and build upon the material in any medium or format, so long as attribution is given to the creator. The license allows for commercial use.
+</br>
+Copyright (c) 2020 Jani Miettinen </br>
+</br>
