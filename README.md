@@ -81,7 +81,7 @@ We are grateful for all comments from clinical advisors from KUH and UEF. Also w
 About
 ===================
 
-Found a bug? If you know github, you can open an [issue](https://github.com/janikmiet/hilmo-visualizer/issues). Otherwise contact the [creators](mailto:jani.miettinen@uef.fi?subject=I found a bug in Hilmo visualizer).
+Found a bug? If you know github, you can open an [issue](https://github.com/janikmiet/hilmo-visualizer/issues).
 </br>
 </br>
 **Source code:** <https://github.com/janikmiet/hilmo-visualizer>
